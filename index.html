@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>小五科學：鐵釘生鏽實驗 AI 實驗顧問系統 (v5.3 永久雲端版)</title>
+  <title>小五科學：鐵釘生鏽實驗 AI 實驗顧問系統</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
@@ -375,7 +375,6 @@
 
       <!-- 班別篩選器 + 三大專屬檢視表格切換按鈕 -->
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3 pb-2 border-b border-slate-100">
-        <!-- 班別篩選 -->
         <div class="flex items-center gap-1.5 flex-wrap">
           <span class="text-sm font-bold text-slate-600 mr-1">班別：</span>
           <button onclick="setClassFilter('ALL')" id="filter-ALL" class="filter-btn bg-sky-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg">全部</button>
@@ -386,7 +385,6 @@
           <button onclick="setClassFilter('5E')" id="filter-5E" class="filter-btn bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1.5 rounded-lg">5E</button>
         </div>
 
-        <!-- 三大表格檢視模式切換 (Tabs) -->
         <div class="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
           <button id="tTab-all" onclick="switchTeacherTab('all')"
             class="px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-sm transition">
@@ -525,7 +523,7 @@
     <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
       <h3 class="text-lg font-bold text-slate-800 mb-1">⚙️ Google Apps Script 永久部署網址</h3>
       <p class="text-xs text-slate-500 mb-3">
-        系統已永久內建你的 GAS 部署網址。如需更換才需修改下方欄位：
+        系統已永久內建你的 GAS 部署網址（API Key 安全隱藏於 GAS 後端，前端完全無外洩風險）：
       </p>
       <input id="gasUrlInput" type="url"
         class="w-full rounded-xl border-2 border-slate-200 px-3.5 py-2.5 text-sm mb-4 focus:border-sky-600 focus:outline-none" />
@@ -538,11 +536,9 @@
 
   <script>
     /******************************************************************
-     * 1. 基本配置與永久內建 GAS 連結
+     * 1. 基本配置與永久內建 GAS 連結 (GitHub Pages 安全版：不含前端 API Key)
      ******************************************************************/
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbx8VHiXgIPT76PuSYGvUwK-ZV0zAv3F7mGfNA3yUt2XYFfAzhjeB6L84QyrVAGYNery/exec"; 
-    const DEEPSEEK_API_KEY = "sk-626572c4ff114095b4928df02d336a15";
-    const TRACKING_ID = "3e18e068-042c-4efa-ba1d-09d064863c00";
     const TEACHER_PWD = "wisdom2668";
     const MAX_TURNS = 3;
     const CACHE_TTL_MS = 10000;
@@ -553,7 +549,6 @@
     let isSessionDone = false;
     let chatHistory = [];
     let currentDrawingBase64 = "";
-    let currentInappropriateLog = "";
 
     let teacherRecords = [];
     let lastFetchTime = 0;
@@ -1014,41 +1009,36 @@
       lastFetchTime = 0;
 
       const gasUrl = getGasUrl();
-      if (gasUrl) {
-        try {
-          const res = await fetch(gasUrl, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({
-              action: "uploadDrawing",
-              className: currentClass,
-              studentId: currentStudentId,
-              drawingBase64: currentDrawingBase64
-            })
-          });
-          const data = await res.json();
-          if (data.status !== "success") throw new Error(data.message || "上傳失敗");
-          statusMsg.textContent = "✅ 實驗設計圖已成功上傳到 Google Sheets！老師現在可以在「作品專屬表格」看到你的設計圖了！";
-          statusMsg.className = "text-xs font-bold text-center mt-2 text-emerald-700";
-          if (btnCanvas) {
-            btnCanvas.disabled = false;
-            btnCanvas.textContent = "🎉 已上傳（點擊可重新更新畫布）";
-          }
-          return;
-        } catch (err) {
-          statusMsg.textContent = "⚠️ 雲端連線異常，作品已暫存於本機 (" + err.message + ")";
-          statusMsg.className = "text-xs font-bold text-center mt-2 text-amber-700";
-          if (btnPhoto) btnPhoto.disabled = false;
-          if (btnCanvas) btnCanvas.disabled = false;
-          return;
+      try {
+        const res = await fetch(gasUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "uploadDrawing",
+            className: currentClass,
+            studentId: currentStudentId,
+            drawingBase64: currentDrawingBase64
+          })
+        });
+        const data = await res.json();
+        if (data.status !== "success") throw new Error(data.message || "上傳失敗");
+        statusMsg.textContent = "✅ 實驗設計圖已成功上傳到 Google Sheets！老師現在可以在「作品專屬表格」看到你的設計圖了！";
+        statusMsg.className = "text-xs font-bold text-center mt-2 text-emerald-700";
+        if (btnCanvas) {
+          btnCanvas.disabled = false;
+          btnCanvas.textContent = "🎉 已上傳（點擊可重新更新畫布）";
         }
+      } catch (err) {
+        statusMsg.textContent = "⚠️ 雲端連線異常，作品已暫存於本機 (" + err.message + ")";
+        statusMsg.className = "text-xs font-bold text-center mt-2 text-amber-700";
+        if (btnPhoto) btnPhoto.disabled = false;
+        if (btnCanvas) btnCanvas.disabled = false;
       }
     }
 
     function resetDrawingAndChecklist() {
       document.querySelectorAll(".draw-check").forEach(cb => cb.checked = false);
       currentDrawingBase64 = "";
-      currentInappropriateLog = "";
       document.getElementById("drawingFileInput").value = "";
       document.getElementById("drawingPreviewWrapper").classList.add("hidden");
       document.getElementById("uploadDrawingBtn").disabled = true;
@@ -1165,7 +1155,7 @@
     }
 
     /******************************************************************
-     * 8. 發送對話、不恰當語言記錄與呼叫 DeepSeek AI
+     * 8. 發送對話與透過 GAS 後端安全呼叫 DeepSeek AI
      ******************************************************************/
     async function sendStudentMessage() {
       if (isSessionDone || usedTurns >= MAX_TURNS) return;
@@ -1183,44 +1173,33 @@
       const matchedBadWord = checkLocalProfanity(text);
 
       try {
-        let aiData = null;
+        const res = await fetch(gasUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "chat",
+            className: currentClass,
+            studentId: currentStudentId,
+            turnCount: attemptingTurn,
+            message: text,
+            history: chatHistory
+          })
+        });
+        const data = await res.json();
+        if (data.status !== "success") throw new Error(data.message || "GAS 回應錯誤");
+        const aiData = data.aiData;
 
-        if (gasUrl) {
-          const res = await fetch(gasUrl, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({
-              action: "chat",
-              className: currentClass,
-              studentId: currentStudentId,
-              turnCount: attemptingTurn,
-              message: text,
-              history: chatHistory
-            })
-          });
-          const data = await res.json();
-          if (data.status !== "success") throw new Error(data.message || "GAS 回應錯誤");
-          aiData = data.aiData;
-
-          // 若本地字庫命中不雅字眼，強制確保標記為 isInappropriate 並生成教師 AI 分析
-          if (matchedBadWord && !aiData.isInappropriate) {
-            aiData.isInappropriate = true;
-            aiData.isOffTopic = true;
-            aiData.advisorReply = "⚠️ 請注意你的用語！在科學課堂與使用 AI 學習時，我們需要保持有禮貌和尊重的態度。這句話已記錄並通知老師，請重新用恰當的語言描述你的實驗設計。";
-            aiData.inappropriateAnalysis = `【違規類型：不雅或攻擊性字眼】學生使用了不當字詞「${matchedBadWord}」。AI分析：學生可能因測試系統底線或情緒發洩而輸入不當用語，建議老師課後提醒網絡禮儀。`;
-          }
-
-          usedTurns = data.effectiveTurn;
-          chatHistory = data.updatedHistory;
-          lastFetchTime = 0;
-        } else {
-          aiData = await callDeepSeekDirect(text, attemptingTurn, matchedBadWord);
-          if (!aiData.isOffTopic && !aiData.isInappropriate) {
-            usedTurns = attemptingTurn;
-          }
+        if (matchedBadWord && !aiData.isInappropriate) {
+          aiData.isInappropriate = true;
+          aiData.isOffTopic = true;
+          aiData.advisorReply = "⚠️ 請注意你的用語！在科學課堂與使用 AI 學習時，我們需要保持有禮貌和尊重的態度。這句話已記錄並通知老師，請重新用恰當的語言描述你的實驗設計。";
+          aiData.inappropriateAnalysis = `【違規類型：不雅或攻擊性字眼】學生使用了不當字詞「${matchedBadWord}」。AI分析：學生可能因測試系統底線或情緒發洩而輸入不當用語，建議老師課後提醒網絡禮儀。`;
         }
 
-        // 若有不恰當語言，同步寫入本地備份供教師後台即時查看
+        usedTurns = data.effectiveTurn;
+        chatHistory = data.updatedHistory;
+        lastFetchTime = 0;
+
         const timeStr = new Date().toLocaleTimeString("zh-HK", { hour12: false });
         let newInappropriateEntry = "";
         if (aiData.isInappropriate) {
@@ -1240,148 +1219,14 @@
         updateTurnUI(aiData.designStatus);
 
       } catch (err) {
-        // 當 GAS 發生異常時，自動切換至前端直連備援確保課堂不中斷
-        try {
-          const fallbackAi = await callDeepSeekDirect(text, attemptingTurn, matchedBadWord);
-          if (!fallbackAi.isOffTopic && !fallbackAi.isInappropriate) {
-            usedTurns = attemptingTurn;
-          }
-          const timeStr = new Date().toLocaleTimeString("zh-HK", { hour12: false });
-          let newInappropriateEntry = "";
-          if (fallbackAi.isInappropriate) {
-            newInappropriateEntry = `[${timeStr}] 學生原話：「${text}」\n🤖 教師AI分析：${fallbackAi.inappropriateAnalysis || "偵測到不恰當課堂用語，建議老師跟進提醒。"}`;
-          }
-          const formattedAiText = fallbackAi.isInappropriate
-            ? `🚨【不恰當語言攔截】${fallbackAi.advisorReply}\n🤖【教師AI分析】${fallbackAi.inappropriateAnalysis}`
-            : `【字面理解】${fallbackAi.studentSummary || ""}\n【極簡觀察】${fallbackAi.advisorReply || ""}\n【預計現象】${fallbackAi.predictedResult || ""}\n【思考提問】${fallbackAi.nextStepPrompt || ""}`;
-
-          chatHistory.push({
-            turn: fallbackAi.isInappropriate ? "🚨 不當用語" : (fallbackAi.isOffTopic ? "離題提示" : `第 ${attemptingTurn} 次`),
-            user: text,
-            aiFormatted: formattedAiText,
-            aiParsed: fallbackAi,
-            aiRaw: JSON.stringify(fallbackAi),
-            time: timeStr
-          });
-          saveToLocalBackup(fallbackAi.designStatus, currentDrawingBase64, newInappropriateEntry);
-          appendAdvisorBubble(fallbackAi);
-          if (fallbackAi.designStatus === "rigorous" || usedTurns >= MAX_TURNS) {
-            isSessionDone = true;
-          }
-          updateTurnUI(fallbackAi.designStatus);
-        } catch (innerErr) {
-          appendErrorBubble("連線發生錯誤，請再試一次 (" + innerErr.message + ")");
-        }
+        appendErrorBubble("雲端連線發生錯誤，請確認網路連線或稍後再試 (" + err.message + ")");
       } finally {
         setLoadingState(false);
       }
     }
 
-    async function callDeepSeekDirect(userMessage, turnCount, matchedBadWord) {
-      let lastQuestionAsked = "（此為第 1 輪，尚無上一輪提問）";
-      let lastSummary = "（尚無上一輪設計）";
-      if (chatHistory.length > 0) {
-        const lastTurn = chatHistory[chatHistory.length - 1];
-        if (lastTurn && lastTurn.aiParsed) {
-          lastQuestionAsked = lastTurn.aiParsed.nextStepPrompt || lastQuestionAsked;
-          lastSummary = lastTurn.aiParsed.studentSummary || lastSummary;
-        }
-      }
-
-      const systemPrompt = `你是一位專為香港小五學生設計的「蘇格拉底式科學實驗顧問」，同時具備「課堂語言守門員」功能，協助老師監察學生的網絡禮儀。學生正在構思「探究鐵釘生鏽條件（水分與空氣）」的公平測試（Fair Test）。每位學生最多有【3 次】發言機會，目前是第 ${turnCount} / 3 次。
-
-【歷史狀態提示】
-- 上一輪學生的累積設計：${lastSummary}
-- 上一輪你問學生的問題：${lastQuestionAsked}
-
-請嚴格遵守以下 7 項守則，並以純 JSON 格式輸出：
-
-【守則 1：不恰當語言偵測、攔截與教師 AI 分析（最高優先級！）】
-- 請仔細審查學生的輸入是否包含「不恰當語言」（包括：粗言穢語、廣東話諧音粗口、侮辱或攻擊性字眼、不雅字詞、惡意挑釁罵人或極度不尊重的說話）。
-- 若偵測到不恰當語言：
-  1. 必須將 "isInappropriate" 設為 true，並將 "isOffTopic" 設為 true。
-  2. 在 "advisorReply"（給學生看）中，嚴肅但溫和地提醒：「⚠️ 請注意你的用語！在科學課堂與使用 AI 學習時，我們需要保持有禮貌和尊重的態度。這句話已系統記錄並通知老師，請重新用恰當的語言描述你的實驗設計。」
-  3. 在 "inappropriateAnalysis"（只給老師後台與 Google Sheets 記錄看）中，以「教師 AI 助教」身分撰寫客觀分析（約 40-60 字），格式為：「【違規類型：(如粗言穢語/侮辱字眼/情緒發洩/惡意挑釁)】學生使用了不當字詞『...』。AI分析：學生可能因...而出現此用語，建議老師課後了解情況並提醒正確使用科技工具的禮儀。」
-- 若學生用語正常，"isInappropriate" 必須設為 false，"inappropriateAnalysis" 留空字串 ""。
-
-【守則 2：一般離題攔截（不扣次數）】
-若學生用語禮貌、沒有不恰當字眼，但內容與「鐵釘生鏽實驗、器材、水、空氣、乾燥劑、油、容器、瓶蓋、公平測試」完全無關，將 "isOffTopic" 設為 true、"isInappropriate" 設為 false，並在 "advisorReply" 溫和提示回歸實驗主題。
-
-【守則 3：必須根據學生的最新答案推進，嚴禁重複提問！】
-- 回覆前先比對「上一輪你的提問」與「學生這一次的最新回答」。絕對禁止重複上一輪已經問過的問題！
-
-【守則 4：嚴格遵守小五科學合理過關標準（禁止胡亂挑剔）】
-1. 探究「水分」合理標準：實驗組（鐵釘接觸自來水與空氣）vs 對照組（有蓋/密封透明瓶＋乾燥劑/吸濕劑）。湊齊「乾燥劑＋瓶蓋/密封」即屬【完全合理 ("rigorous")】！
-2. 探究「空氣」合理標準：實驗組（鐵釘泡自來水）vs 對照組（鐵釘泡「冷開水/煮沸過的水」＋表面加「植物油/油層」）。只要提到「冷開水＋油」，已【100%合理隔絕空氣 ("rigorous")】！
-
-【守則 5：極簡現狀觀察與預計現象（防劇透且只給現象）】
-- "advisorReply"（正常對話時控制在 25 字內）：只做客觀現狀確認。
-- "predictedResult"：只列出幾日後各組鐵釘「會否生鏽」的準確現象。
-
-【守則 6：未過關時的防劇透提問與第 3 次留白思考】
-- 每次在 "nextStepPrompt" 最多只問【唯一一條】思考問題，且提問中嚴禁直接說出學生漏掉的答案器材名稱。
-
-【守則 7：固定 JSON 輸出結構】
-{
-  "isOffTopic": false,
-  "isInappropriate": false,
-  "inappropriateAnalysis": "",
-  "studentLevel": "standard",
-  "designStatus": "incomplete",
-  "studentSummary": "一句話總結學生目前 A 組與 B 組的最新完整擺放方式",
-  "advisorReply": "25字內確認學生最新一次的修改（若不恰當語言則輸出禮貌提醒）",
-  "predictedResult": "按學生最新設計，幾日後 A 組與 B 組鐵釘『會否生鏽』的準確現象",
-  "nextStepPrompt": "唯一一條不重複的思考問題，或過關畫圖提示",
-  "visualSpec": {
-    "setupCount": 2,
-    "setups": [
-      {
-        "label": "A 組",
-        "containerType": "bottle",
-        "hasLid": false,
-        "liquid": "tap_water",
-        "hasOilLayer": false,
-        "hasDesiccant": false,
-        "hasNail": true
-      }
-    ]
-  }
-}`;
-
-      const messages = [{ role: "system", content: systemPrompt }];
-      chatHistory.forEach(h => {
-        messages.push({ role: "user", content: h.user });
-        messages.push({ role: "assistant", content: h.aiRaw });
-      });
-      messages.push({ role: "user", content: userMessage });
-
-      const res = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${DEEPSEEK_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: messages,
-          temperature: 0.25,
-          response_format: { type: "json_object" }
-        })
-      });
-
-      const data = await res.json();
-      const parsed = JSON.parse(data.choices[0].message.content);
-      if (matchedBadWord && !parsed.isInappropriate) {
-        parsed.isInappropriate = true;
-        parsed.isOffTopic = true;
-        parsed.advisorReply = "⚠️ 請注意你的用語！在科學課堂與使用 AI 學習時，我們需要保持有禮貌和尊重的態度。這句話已記錄並通知老師，請重新用恰當的語言描述你的實驗設計。";
-        parsed.inappropriateAnalysis = `【違規類型：不雅或攻擊性字眼】學生使用了不當字詞「${matchedBadWord}」。AI分析：學生可能因測試系統底線或情緒發洩而輸入不當用語，建議老師課後提醒網絡禮儀。`;
-      }
-      return parsed;
-    }
-
     /******************************************************************
-     * 9. 渲染對話氣泡（新增「不恰當語言嚴肅提醒氣泡」）
+     * 9. 渲染對話氣泡
      ******************************************************************/
     function appendStudentBubble(text) {
       const container = document.getElementById("chatContainer");
@@ -1707,28 +1552,26 @@
       cacheBadge.textContent = "雲端同步中...";
 
       const gasUrl = getGasUrl();
-      if (gasUrl) {
-        try {
-          const res = await fetch(gasUrl, {
-            method: "POST",
-            headers: { "Content-Type": "text/plain;charset=utf-8" },
-            body: JSON.stringify({
-              action: "getTeacherData",
-              password: TEACHER_PWD
-            })
-          });
-          const data = await res.json();
-          if (data.status === "success") {
-            teacherRecords = data.records || [];
-            lastFetchTime = Date.now();
-            cacheBadge.textContent = `☁️ 雲端已同步 (${new Date().toLocaleTimeString("zh-HK", { hour12: false })})`;
-            cacheBadge.className = "text-xs font-bold bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full";
-            renderTeacherTable();
-            return;
-          }
-        } catch (err) {
-          console.warn("GAS 讀取失敗，改為顯示本機緩存紀錄", err);
+      try {
+        const res = await fetch(gasUrl, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "getTeacherData",
+            password: TEACHER_PWD
+          })
+        });
+        const data = await res.json();
+        if (data.status === "success") {
+          teacherRecords = data.records || [];
+          lastFetchTime = Date.now();
+          cacheBadge.textContent = `☁️ 雲端已同步 (${new Date().toLocaleTimeString("zh-HK", { hour12: false })})`;
+          cacheBadge.className = "text-xs font-bold bg-sky-100 text-sky-800 px-2.5 py-0.5 rounded-full";
+          renderTeacherTable();
+          return;
         }
+      } catch (err) {
+        console.warn("GAS 讀取失敗，改為顯示本機緩存紀錄", err);
       }
 
       teacherRecords = JSON.parse(localStorage.getItem("rust_local_records") || "[]");
@@ -1755,7 +1598,6 @@
       const hasDesiccant = /(乾燥|乾躁|吸濕|防潮|吸乾)/.test(allStudentText);
       const hasLidOrSeal = /(蓋|密封|封住|笠住|樽蓋|塞|油)/.test(allStudentText);
 
-      // 同時從 history 中提取所有不恰當語言分析紀錄
       const historyInappLogs = (record.history || [])
         .filter(h => h.aiParsed && h.aiParsed.isInappropriate)
         .map(h => `[${h.time || ""}] 學生原話：「${h.user}」\n🤖 教師AI分析：${h.aiParsed.inappropriateAnalysis || "偵測到不恰當課堂用語"}`)
@@ -1889,7 +1731,6 @@
           const displayId = isAnonymousMode ? `🌟 同學 #${index + 1}` : `${r.studentId} 號`;
           const hasImg = r.drawingBase64 && r.drawingBase64.startsWith("data:image");
 
-          // 提取該學生最後一次實驗摘要
           const validTurns = (r.history || []).filter(h => h.aiParsed && !h.aiParsed.isOffTopic && !h.aiParsed.isInappropriate);
           const lastSummary = validTurns.length > 0
             ? (validTurns[validTurns.length - 1].aiParsed.studentSummary || validTurns[validTurns.length - 1].user)
